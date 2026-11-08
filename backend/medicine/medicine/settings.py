@@ -125,9 +125,8 @@ REST_FRAMEWORK = {
 
 # ---------------------------------------------------------------- CORS / CSRF
 FRONTEND_ORIGINS = env_list("FRONTEND_ORIGINS")
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOWED_ORIGINS = [o for o in os.environ.get("CORS_ORIGINS", "").split(",") if o]
-CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CORS_ORIGINS", "").split(",") if o]
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 else:
     CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
 
