@@ -1,0 +1,18 @@
+# Python virtual environment (yours is named "med")
+med/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Local database and secrets
+db.sqlite3
+.env
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Django
+staticfiles/
