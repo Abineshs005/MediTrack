@@ -2,20 +2,11 @@ from django.contrib.auth import get_user_model
 from django.db.models import ProtectedError
 from rest_framework import mixins, viewsets
 from rest_framework.exceptions import ValidationError
-<<<<<<< HEAD
-
-from .models import Batch, Medicine, StockMovement, Supplier
-from .permissions import AdminOnly, RoleBasedPermission
-from .serializers import (BatchSerializer, MedicineSerializer,
-                          MovementSerializer, SupplierSerializer,
-                          UserSerializer)
-=======
 from .models import Supplier, Medicine, Batch, StockMovement
 from .permissions import RoleBasedPermission, AdminOnly, role_of
 from .signals import announce
 from .serializers import (SupplierSerializer, MedicineSerializer, BatchSerializer,
                           MovementSerializer, UserSerializer)
->>>>>>> 43d68d3 (Add notifications, password toggle, deploy files; remove old requirements.txt)
 from .services import move_stock
 
 User = get_user_model()

@@ -1,12 +1,10 @@
-"""Announce every change to all connected browsers (the real-time part)."""
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-
-from .models import Batch, Medicine, StockMovement, Supplier
+from .models import Supplier, Medicine, Batch, StockMovement
 
 
 def announce(resource, message, notify=True):
@@ -45,20 +43,13 @@ def batch_saved(sender, instance, created, **kwargs):
         announce("purchases",
                  f"Purchase added: {instance} ({instance.quantity} units from {instance.supplier})")
     elif kwargs.get("update_fields") == frozenset({"quantity"}):
-        # stock changed by an issue/return: refresh pages quietly,
-        # the issue/return notification below already tells the story
+        # stock changed by an issue/return: refresh pages quietly
         announce("purchases", f"Stock updated: {instance}", notify=False)
     else:
         announce("purchases",
                  f"Batch updated: {instance}, stock now {instance.quantity} units")
 
 
-<<<<<<< HEAD
-@receiver([post_save, post_delete], sender=StockMovement)
-def movement_changed(sender, instance, **kwargs):
-    resource = "issues" if instance.kind == "issue" else "returns"
-    announce(resource, f"{instance.kind.title()}: {instance.quantity} x {instance.batch}")
-=======
 @receiver(post_delete, sender=Batch)
 def batch_deleted(sender, instance, **kwargs):
     announce("purchases", f"Batch deleted: {instance}")
@@ -92,4 +83,3 @@ def movement_deleted(sender, instance, **kwargs):
 @receiver(post_delete, sender=get_user_model())
 def user_deleted(sender, instance, **kwargs):
     announce("users", f"User deleted: {instance.username}")
->>>>>>> 43d68d3 (Add notifications, password toggle, deploy files; remove old requirements.txt)

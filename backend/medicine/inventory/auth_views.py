@@ -107,13 +107,8 @@ class MeView(APIView):
     def get(self, request):
         return Response(user_payload(request.user))
 
-
 class LogoutView(APIView):
     def post(self, request):
         Token.objects.filter(user=request.user).delete()
-<<<<<<< HEAD
-        return Response(status=204)
-=======
         announce("users", f"{request.user.first_name or request.user.username} logged out")
         return Response(status=204)
->>>>>>> 43d68d3 (Add notifications, password toggle, deploy files; remove old requirements.txt)
