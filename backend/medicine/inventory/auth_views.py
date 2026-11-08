@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from .models import Profile
 from .permissions import role_of
+from .signals import announce
 
 User = get_user_model()
 SIGNUP_ROLES = ("Inventory Staff", "Pharmacist")  # Admin is never self-service
@@ -44,6 +45,7 @@ class LoginView(APIView):
                 })
             raise ValidationError({"detail": "Invalid username or password."})
         token, _ = Token.objects.get_or_create(user=user)
+        announce("users", f"{user.first_name or user.username} logged in")
         return Response({"token": token.key, "user": user_payload(user)})
 
 
@@ -94,6 +96,7 @@ class RegisterView(APIView):
             password=password, is_active=False,  # waits for admin approval
         )
         Profile.objects.create(user=user, role=role, phone=phone)
+        announce("users", f"New registration: {full_name} ({role}) is waiting for approval")
         return Response(
             {"detail": "Registration received. An administrator must approve your account before you can log in."},
             status=201,
@@ -108,4 +111,9 @@ class MeView(APIView):
 class LogoutView(APIView):
     def post(self, request):
         Token.objects.filter(user=request.user).delete()
+<<<<<<< HEAD
         return Response(status=204)
+=======
+        announce("users", f"{request.user.first_name or request.user.username} logged out")
+        return Response(status=204)
+>>>>>>> 43d68d3 (Add notifications, password toggle, deploy files; remove old requirements.txt)

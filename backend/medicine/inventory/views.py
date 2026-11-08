@@ -2,12 +2,20 @@ from django.contrib.auth import get_user_model
 from django.db.models import ProtectedError
 from rest_framework import mixins, viewsets
 from rest_framework.exceptions import ValidationError
+<<<<<<< HEAD
 
 from .models import Batch, Medicine, StockMovement, Supplier
 from .permissions import AdminOnly, RoleBasedPermission
 from .serializers import (BatchSerializer, MedicineSerializer,
                           MovementSerializer, SupplierSerializer,
                           UserSerializer)
+=======
+from .models import Supplier, Medicine, Batch, StockMovement
+from .permissions import RoleBasedPermission, AdminOnly, role_of
+from .signals import announce
+from .serializers import (SupplierSerializer, MedicineSerializer, BatchSerializer,
+                          MovementSerializer, UserSerializer)
+>>>>>>> 43d68d3 (Add notifications, password toggle, deploy files; remove old requirements.txt)
 from .services import move_stock
 
 User = get_user_model()
@@ -51,6 +59,20 @@ class UserViewSet(SafeDeleteMixin, viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("id")
     serializer_class = UserSerializer
     permission_classes = [AdminOnly]
+
+    def perform_create(self, serializer):
+        user = serializer.save()
+        announce("users", f"User added: {user.username} ({role_of(user)})")
+
+    def perform_update(self, serializer):
+        was_active = serializer.instance.is_active
+        user = serializer.save()
+        if not was_active and user.is_active:
+            announce("users", f"User approved: {user.username}")
+        elif was_active and not user.is_active:
+            announce("users", f"User deactivated: {user.username}")
+        else:
+            announce("users", f"User updated: {user.username}")
 
     def perform_destroy(self, instance):
         if instance == self.request.user:

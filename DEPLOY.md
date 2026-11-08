@@ -1,93 +1,82 @@
-# Deploying MediTrack
+# Deploying MediTrack on Vercel
 
-Recommended split:
+Two Vercel projects from the same GitHub repository:
 
-| Part | Where | Why |
+| Project | Root Directory | What it is |
 |---|---|---|
-| `frontend/` | **Vercel** (static site) | Plain HTML, CSS and JS: free and fast |
-| `backend/medicine/` | A host that runs long-lived servers (**Render**, Railway or Fly.io) | Runs Daphne, so the WebSockets stay open |
-| Database | **PostgreSQL** from the same host | SQLite files do not persist on hosted platforms |
-| Broadcasts | **Redis** (key-value) from the same host | Lets every server process announce changes to every browser |
+| `meditrack-api` | `backend/medicine` | Django + Channels (REST API and WebSockets) |
+| `meditrack` | `frontend` | The website (static files) |
 
-Vercel can also run Django with WebSockets (public beta), but connections are
-capped in length and pinned to one instance, so the split above is more reliable.
+Plus two add-ons from the Vercel Marketplace: **PostgreSQL** and **Redis**.
 
-The platforms change their menus often. The commands and variables below are the
-stable part; look for the matching fields in each dashboard.
+## 0. Before you start
 
-## 1. Push the project to GitHub
+- The project is pushed to GitHub (`backend/medicine/inventory/migrations/` included, `db.sqlite3` and your virtual environment NOT included).
+- Locally, `python manage.py makemigrations --check --dry-run` says `No changes detected`.
 
-Make sure `db.sqlite3` and your virtual environment are NOT committed
-(`.gitignore` handles this) and that `backend/medicine/inventory/migrations/`
-IS committed (keep your `0001`, `0002`, `0003` files).
+## 1. Backend project
 
-Check there are no model changes missing a migration (run locally):
+1. Vercel: **Add New, Project**, import the repo.
+2. Name: `meditrack-api`. **Root Directory: `backend/medicine`**. Framework should be detected as Django (it finds `manage.py`).
+3. Environment variables (add them before the first deploy):
 
-```bash
-python manage.py makemigrations --check --dry-run
-```
-
-It should say `No changes detected`.
-
-## 2. Backend (example: Render)
-
-1. Create a **PostgreSQL** database and a **Redis / Key Value** instance
-   in the same region as the backend.
-2. Create a **Web Service** from your GitHub repo:
-   - Root directory: `backend/medicine`
-   - Runtime: Python (set `PYTHON_VERSION` to 3.12 or newer, Django 6.1 needs it)
-   - Build command:
-
-     ```bash
-     pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput && (python manage.py createsuperuser --noinput || true)
-     ```
-
-   - Start command:
-
-     ```bash
-     daphne -b 0.0.0.0 -p $PORT medicine.asgi:application
-     ```
-
-3. Environment variables:
-
-| Variable | Value |
+| Key | Value |
 |---|---|
 | `DJANGO_DEBUG` | `0` |
-| `DJANGO_SECRET_KEY` | a long random string (never reuse the one from development) |
-| `DJANGO_ALLOWED_HOSTS` | your backend host, e.g. `meditrack-api.onrender.com` |
-| `DATABASE_URL` | the PostgreSQL connection string |
-| `REDIS_URL` | the Redis connection string |
-| `FRONTEND_ORIGINS` | your Vercel address, e.g. `https://meditrack.vercel.app` (no trailing slash) |
-| `DJANGO_SUPERUSER_USERNAME` | your admin username |
-| `DJANGO_SUPERUSER_PASSWORD` | a strong admin password |
-| `DJANGO_SUPERUSER_EMAIL` | your email |
+| `DJANGO_SECRET_KEY` | a long random string (not the development one) |
+| `FRONTEND_ORIGINS` | add later, when the front end has an address |
 
-4. Deploy, then open `https://YOUR-BACKEND/health/`. You should see
-   `{"status": "ok", ...}`.
+4. Deploy. Vercel adds its own host name to Django's allowed hosts automatically.
 
-## 3. Front end (Vercel)
+## 2. Database and Redis
 
-1. In `frontend/config.js`, replace `https://YOUR-BACKEND-HOST.onrender.com`
-   with your real backend address, commit and push.
-2. In Vercel choose **Add New, Project**, import the repo and set:
-   - Root Directory: `frontend`
-   - Framework Preset: Other
-   - Build command: none
-3. Deploy, then copy the Vercel address into the backend's `FRONTEND_ORIGINS`
-   variable and redeploy the backend once.
+1. In the backend project, open **Storage** (or the Marketplace) and add a **PostgreSQL** database. Connect it to `meditrack-api`. Vercel sets `DATABASE_URL`.
+2. Add a **Redis** database the same way. Make sure the project has a variable named exactly `REDIS_URL` holding the normal `redis://` or `rediss://` address (not a REST address). If the provider used another name, add `REDIS_URL` yourself with that value.
+3. Redeploy the backend.
 
-## 4. Test
+## 3. Create the tables and the admin user (once, from your computer)
 
-1. Open the Vercel address and sign in with the admin account.
-2. Open the site in two windows, issue stock in one, and watch the other update.
-   The green **Live** badge must show in both.
+Copy the `DATABASE_URL` value, then in the VS Code terminal:
+
+```bash
+cd backend\medicine
+..\med\Scripts\activate
+set DATABASE_URL=PASTE-THE-URL-HERE
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+PowerShell uses `$env:DATABASE_URL="PASTE-THE-URL-HERE"` instead of `set`.
+
+## 4. Check the backend
+
+Open `https://YOUR-BACKEND/health/`. You should see `{"status": "ok", ...}`.
+
+## 5. Front-end project
+
+1. In `frontend/config.js`, put your backend address (no slash at the end) in place of `https://YOUR-BACKEND-HOST.onrender.com`, then commit and push.
+2. Vercel: **Add New, Project**, same repo. **Root Directory: `frontend`**, Framework Preset: Other, no build command.
+3. Deploy and copy its address.
+
+## 6. Allow the front end
+
+In the backend project set `FRONTEND_ORIGINS` to the front-end address (for example `https://meditrack.vercel.app`, no slash at the end) and redeploy the backend.
+
+## 7. Test
+
+Open the front-end address, sign in, and open it in a second window. Issue stock in one window and watch the other update. The green **Live** badge should show in both.
+
+## Notes
+
+- WebSocket connections close when the Vercel Function reaches its maximum duration. MediTrack reconnects every 3 seconds and reloads its data.
+- Redis is required: without it, users connected to different function instances would not see each other's updates.
 
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
-| "Could not load data: Failed to fetch" | Wrong address in `config.js`, or `FRONTEND_ORIGINS` is missing or has a trailing slash |
-| Badge says Offline | The backend is asleep or restarting (free plans sleep), or `REDIS_URL` is missing |
-| `DisallowedHost` error | The backend host is missing from `DJANGO_ALLOWED_HOSTS` |
-| Admin page has no styling | `collectstatic` did not run in the build command |
-| Registration blocked after many tries | The sign-up form allows 20 attempts per hour per visitor |
+| "Failed to fetch" | Wrong address in `config.js`, or `FRONTEND_ORIGINS` missing or with a trailing slash |
+| Badge says Offline, but data loads | `REDIS_URL` missing or wrong, or the WebSocket path is blocked. Tell me the Console message |
+| `DisallowedHost` | Add the backend host to `DJANGO_ALLOWED_HOSTS` |
+| Build says the Python version is too old | Add a `pyproject.toml` with `requires-python = ">=3.12"` |
+| `ImproperlyConfigured: Set DJANGO_SECRET_KEY` | The variable is missing in the backend project |

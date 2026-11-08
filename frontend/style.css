@@ -1292,3 +1292,123 @@ footer {
         font-size: 19px
     }
 }
+
+/* ---- notification bell: dot only shows when there are unread items ---- */
+.icon-button #notifDot {
+    display: none;
+    width: auto;
+    min-width: 8px;
+    height: 8px;
+    border-radius: 8px
+}
+
+.icon-button #notifDot.show {
+    display: block
+}
+
+.notif-wrap {
+    position: relative
+}
+
+.notif-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 46px;
+    width: 320px;
+    max-height: 380px;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .18);
+    z-index: 1000
+}
+
+.notif-dropdown.open {
+    display: block
+}
+
+.notif-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    font-weight: 600;
+    font-size: 14px;
+    border-bottom: 1px solid #eef1f5
+}
+
+.notif-head button {
+    border: 0;
+    background: none;
+    color: #1f7a4d;
+    font-size: 12px
+}
+
+.notif-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f3f6;
+    font-size: 13px;
+    color: #334155
+}
+
+.notif-item.unread {
+    background: #f0faf4
+}
+
+.notif-item small {
+    display: block;
+    color: #94a3b8;
+    font-size: 11px;
+    margin-top: 2px
+}
+
+.notif-empty {
+    padding: 22px 14px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px
+}
+
+.notif-foot {
+    display: block;
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 12px;
+    color: #1f7a4d;
+    text-decoration: none
+}
+
+/* ---- password field with one reliable eye button ---- */
+.password-wrap {
+    position: relative
+}
+
+.password-wrap .form-control {
+    padding-right: 44px
+}
+
+.eye-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    border: 0;
+    background: none;
+    color: #64748b;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+    cursor: pointer
+}
+
+.eye-btn:hover {
+    color: #1f7a4d
+}
+
+/* hide the browser's own eye (Edge/IE) so it never fights with ours */
+input::-ms-reveal,
+input::-ms-clear {
+    display: none
+}

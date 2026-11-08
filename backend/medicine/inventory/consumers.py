@@ -30,6 +30,14 @@ class InventoryConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_discard(self.group, self.channel_name)
 
     async def inventory_update(self, event):
+<<<<<<< HEAD
         await self.send_json(
             {"resource": event["resource"], "message": event["message"]}
         )
+=======
+        await self.send_json({
+            "resource": event["resource"],
+            "message": event["message"],
+            "notify": event.get("notify", True),
+        })
+>>>>>>> 43d68d3 (Add notifications, password toggle, deploy files; remove old requirements.txt)

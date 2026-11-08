@@ -684,10 +684,14 @@ function fieldMarkup(fields) {
                     : ""
                 }
               >`;
+      const control =
+        type === "password"
+          ? `<div class="password-wrap">${field}<button type="button" class="eye-btn" tabindex="-1" aria-label="Show password" onclick="togglePassword(this)"><i class="bi bi-eye"></i></button></div>`
+          : field;
       return `
         <div class="${wrapperClass}">
           <label class="form-label">${label}</label>
-          ${field}
+          ${control}
         </div>`;
     })
     .join("");
@@ -1652,6 +1656,109 @@ window.saveMovement = saveMovement;
 window.generateReport = generateReport;
 window.exportCSV = exportCSV;
 window.toast = toast;
+// ---------------- Notifications (bell) ----------------
+const NOTIF_KEY = "meditrack_notifs";
+let notifs = [];
+try {
+  notifs = JSON.parse(localStorage.getItem(NOTIF_KEY)) || [];
+} catch {
+  notifs = [];
+}
+function saveNotifs() {
+  try {
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs.slice(0, 30)));
+  } catch {}
+}
+function addNotification(message) {
+  if (!message) return;
+  notifs.unshift({ id: Date.now() + Math.random(), message, time: Date.now(), read: false });
+  notifs = notifs.slice(0, 30);
+  saveNotifs();
+  renderNotifications();
+}
+function renderNotifications() {
+  const dot = $("#notifDot");
+  const box = $("#notifDropdown");
+  if (!dot || !box) return;
+  const unread = notifs.filter((n) => !n.read).length;
+  dot.classList.toggle("show", unread > 0); // red dot only when something is unread
+  dot.textContent = "";
+  const items = notifs.length
+    ? notifs
+        .map(
+          (n) => `<div class="notif-item ${n.read ? "" : "unread"}">${safe(n.message)}
+            <small>${new Date(n.time).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small></div>`,
+        )
+        .join("")
+    : '<div class="notif-empty">No notifications yet</div>';
+  box.innerHTML = `<div class="notif-head"><span>Notifications</span>
+      <button type="button" onclick="clearNotifications()">Clear all</button></div>
+    ${items}
+    <a class="notif-foot" href="#expiry" onclick="event.preventDefault();closeNotifications();showPage('expiry')">View expiry tracking</a>`;
+}
+function closeNotifications() {
+  $("#notifDropdown")?.classList.remove("open");
+}
+function toggleNotifications(e) {
+  e?.stopPropagation();
+  const box = $("#notifDropdown");
+  const opening = !box.classList.contains("open");
+  box.classList.toggle("open", opening);
+  if (opening) {
+    // opening the list marks everything as read -> the red dot disappears
+    notifs.forEach((n) => (n.read = true));
+    saveNotifs();
+    const dot = $("#notifDot");
+    dot.classList.remove("show");
+    // keep the "unread" highlight visible for this view only
+  }
+}
+function clearNotifications() {
+  notifs = [];
+  saveNotifs();
+  renderNotifications();
+}
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".notif-wrap")) closeNotifications();
+});
+window.toggleNotifications = toggleNotifications;
+window.closeNotifications = closeNotifications;
+window.clearNotifications = clearNotifications;
+renderNotifications();
+
+// Daily summary: expired, expiring soon and low-stock batches (once per day per browser)
+function checkStockAlerts() {
+  const day = today();
+  try {
+    if (localStorage.getItem("meditrack_alert_day") === day) return;
+  } catch {}
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "es"}`;
+  const active = db.purchases.filter((b) => daysLeft(b.expiry_date) >= 0);
+  const expired = db.purchases.filter((b) => daysLeft(b.expiry_date) < 0);
+  const near = active.filter((b) => daysLeft(b.expiry_date) <= 30);
+  const low = active.filter(
+    (b) =>
+      Number(b.quantity) <=
+      Number((db.medicines.find((m) => m.name === b.medicine) || {}).reorder_level || 0),
+  );
+  if (expired.length) addNotification(`Expired: ${plural(expired.length, "batch")} need attention`);
+  if (near.length) addNotification(`Expiring soon: ${plural(near.length, "batch")} within 30 days`);
+  if (low.length) addNotification(`Low stock: ${plural(low.length, "batch")} at or below reorder level`);
+  try {
+    localStorage.setItem("meditrack_alert_day", day);
+  } catch {}
+}
+
+// ---------------- Password show / hide ----------------
+function togglePassword(btn) {
+  const input = btn.parentElement.querySelector("input");
+  const show = input.type === "password";
+  input.type = show ? "text" : "password";
+  btn.innerHTML = `<i class="bi ${show ? "bi-eye-slash" : "bi-eye"}"></i>`;
+  btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+}
+window.togglePassword = togglePassword;
+
 // ---------------- Real-time updates (WebSocket) ----------------
 const WS_URL = `${BACKEND.replace(/^http/, "ws")}/ws/inventory/`; // http -> ws, https -> wss
 let socket,
@@ -1713,6 +1820,8 @@ function connectSocket() {
   };
   socket.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
+    if (msg.notify !== false)
+      addNotification(msg.message || `${msg.resource || "Data"} updated`);
     await reload(msg.resource);
     const mine = Date.now() - ownActionAt < 2000;
     if (formIsDirty()) {
@@ -1752,6 +1861,8 @@ function clearSession() {
     socket.close();
   }
   $("#liveBadge")?.remove();
+  notifs = [];
+  renderNotifications();
   for (const k of Object.keys(ENDPOINTS)) db[k] = [];
   setUserBox();
   showPage("login");
@@ -1767,6 +1878,7 @@ async function logout() {
 async function startApp() {
   await reload();
   setUserBox();
+  checkStockAlerts();
   showPage(location.hash.slice(1) || "dashboard");
   setLive(false);
   connectSocket();

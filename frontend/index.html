@@ -20,9 +20,12 @@
             <span>MediTrack<small>INVENTORY SYSTEM</small></span>
           </a>
           <div class="top-actions"><span class="today" id="today"></span>
-            <button class="icon-button" title="Expiry notifications" onclick="showPage('expiry')"><i class="bi bi-bell"></i>
-              <span></span>
-            </button>
+            <div class="notif-wrap">
+              <button class="icon-button" id="bellBtn" type="button" title="Notifications" onclick="toggleNotifications(event)"><i class="bi bi-bell"></i>
+                <span id="notifDot"></span>
+              </button>
+              <div class="notif-dropdown" id="notifDropdown"></div>
+            </div>
             <div class="top-user"><span class="avatar">AD</span>
               <span><strong>Admin User</strong><small>Administrator</small></span><button class="btn btn-sm btn-light"
                 onclick="showPage('login')" title="Log out"><i class="bi bi-box-arrow-right"></i></button></div>
