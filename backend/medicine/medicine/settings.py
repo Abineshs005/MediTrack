@@ -14,6 +14,7 @@ environment variables:
 """
 import os
 from pathlib import Path
+import dj_database_url
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -25,13 +26,13 @@ def env_list(name):
 
 
 # ---------------------------------------------------------------- core
-DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-key-change-me")
 if not DEBUG and SECRET_KEY == "dev-only-key-change-me":
     raise ImproperlyConfigured("Set DJANGO_SECRET_KEY when DJANGO_DEBUG is 0.")
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
     ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
@@ -54,6 +55,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -91,12 +93,12 @@ if os.environ.get("DATABASE_URL"):
         "default": dj_database_url.parse(os.environ["DATABASE_URL"], conn_max_age=600)
     }
 else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+   DATABASES = {
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+    )
+}
 
 # ---------------------------------------------------------------- WebSockets
 if os.environ.get("REDIS_URL"):
@@ -123,9 +125,9 @@ REST_FRAMEWORK = {
 
 # ---------------------------------------------------------------- CORS / CSRF
 FRONTEND_ORIGINS = env_list("FRONTEND_ORIGINS")
-
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = [o for o in os.environ.get("CORS_ORIGINS", "").split(",") if o]
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CORS_ORIGINS", "").split(",") if o]
 else:
     CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
 
