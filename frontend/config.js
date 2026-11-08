@@ -6,5 +6,5 @@ const isLocal = ["127.0.0.1", "localhost"].includes(location.hostname);
 window.MEDITRACK_CONFIG = {
   BACKEND_URL: isLocal
     ? "http://127.0.0.1:8000"
-    : "https://YOUR-BACKEND-HOST.onrender.com", // <-- change this after deploying the backend
+    : "https://meditrack-6tmg.onrender.com", // <-- change this after deploying the backend
 };
